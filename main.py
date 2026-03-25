@@ -39,7 +39,7 @@ def processarLinhas(linhas):
 
 def main():
     if len(sys.argv) != 2:
-        print("Uso: python main.py <arquivo_teste.txt>")
+        print("Uso: python[3] main.py <arquivo_teste.txt>")
         sys.exit(1)
 
     nome_arquivo = sys.argv[1]
