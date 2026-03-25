@@ -1,3 +1,4 @@
+# Integrantes do grupo (ordem alfabética):
 # André Vinícius Zicka Schmidt - GitHub: andrevzs
 # Gabriel Fischer Domakoski - GitHub: fochu3013
 #
@@ -5,10 +6,12 @@
 # RA1 19
 
 import sys
+from lexer import parseExpressao
 
 
 def lerArquivoTeste(nome_arquivo):
     linhas = []
+
     try:
         with open(nome_arquivo, "r", encoding="utf-8") as arquivo:
             for numero_linha, linha in enumerate(arquivo, start=1):
@@ -21,14 +24,17 @@ def lerArquivoTeste(nome_arquivo):
     except OSError as erro:
         print(f"Erro ao abrir o arquivo '{nome_arquivo}': {erro}")
         sys.exit(1)
+
     return linhas
 
 
 def processarLinhas(linhas):
-    print("Arquivo lido com sucesso.\n")
-    print("Linhas encontradas:")
     for numero_linha, conteudo in linhas:
-        print(f"Linha {numero_linha}: {conteudo}")
+        try:
+            tokens = parseExpressao(conteudo)
+            print(f"Linha {numero_linha}: {tokens}")
+        except ValueError as erro:
+            print(f"Linha {numero_linha}: {erro}")
 
 
 def main():
