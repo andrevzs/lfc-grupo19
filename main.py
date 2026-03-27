@@ -7,6 +7,7 @@
 
 import sys
 from lexer import parseExpressao
+from executor import executarExpressao
 
 
 def lerArquivoTeste(nome_arquivo):
@@ -29,12 +30,25 @@ def lerArquivoTeste(nome_arquivo):
 
 
 def processarLinhas(linhas):
+    memoria = {}
+    resultados = []
+    todos_tokens = []
     for numero_linha, conteudo in linhas:
         try:
             tokens = parseExpressao(conteudo)
+            resultado = executarExpressao(tokens, memoria, resultados)
             print(f"Linha {numero_linha}: {tokens}")
+            print(f"  Resultado executor: {resultado}")
+            resultados.append(resultado)
+            todos_tokens.append((numero_linha, tokens))
         except ValueError as erro:
             print(f"Linha {numero_linha}: {erro}")
+    
+    with open('tokens.txt', 'w', encoding='utf-8') as arquivo:
+        for numero_linha, tokens in todos_tokens:
+            arquivo.write(f"Linha {numero_linha}: {tokens}\n")
+    
+    return todos_tokens
 
 
 def main():
