@@ -45,7 +45,14 @@ L_2:
     VCVT.S32.F64 s1, d1
     VMOV r1, s0
     VMOV r2, s1
-    SDIV r3, r1, r2
+    MOV r3, #0
+L_3:
+    CMP r1, r2
+    BLT L_4
+    SUB r1, r1, r2
+    ADD r3, r3, #1
+    B L_3
+L_4:
     VMOV s2, r3
     VCVT.F64.S32 d0, s2
     LDR r0, =RES_LINHA_3
@@ -60,10 +67,13 @@ L_2:
     VCVT.S32.F64 s1, d1
     VMOV r1, s0
     VMOV r2, s1
-    SDIV r3, r1, r2
-    MUL r4, r3, r2
-    SUB r5, r1, r4
-    VMOV s2, r5
+L_5:
+    CMP r1, r2
+    BLT L_6
+    SUB r1, r1, r2
+    B L_5
+L_6:
+    VMOV s2, r1
     VCVT.F64.S32 d0, s2
     LDR r0, =RES_LINHA_4
     VSTR d0, [r0]
@@ -141,10 +151,13 @@ L_2:
     VCVT.S32.F64 s1, d1
     VMOV r1, s0
     VMOV r2, s1
-    SDIV r3, r1, r2
-    MUL r4, r3, r2
-    SUB r5, r1, r4
-    VMOV s2, r5
+L_7:
+    CMP r1, r2
+    BLT L_8
+    SUB r1, r1, r2
+    B L_7
+L_8:
+    VMOV s2, r1
     VCVT.F64.S32 d0, s2
     LDR r0, =C_4
     VLDR d2, [r0]
@@ -153,13 +166,13 @@ L_2:
     VCVT.S32.F64 s1, d2
     VMOV r2, s1
     MOV r3, #1
-L_3:
+L_9:
     CMP r2, #0
-    BEQ L_4
+    BEQ L_10
     MUL r3, r3, r1
     SUB r2, r2, #1
-    B L_3
-L_4:
+    B L_9
+L_10:
     VMOV s2, r3
     VCVT.F64.S32 d0, s2
     LDR r0, =RES_LINHA_12
@@ -210,13 +223,13 @@ L_4:
     VCVT.S32.F64 s1, d1
     VMOV r2, s1
     MOV r3, #1
-L_5:
+L_11:
     CMP r2, #0
-    BEQ L_6
+    BEQ L_12
     MUL r3, r3, r1
     SUB r2, r2, #1
-    B L_5
-L_6:
+    B L_11
+L_12:
     VMOV s2, r3
     VCVT.F64.S32 d0, s2
     LDR r0, =RES_LINHA_16
