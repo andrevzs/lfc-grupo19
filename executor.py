@@ -123,19 +123,3 @@ def _eh_numero(token):
 def _eh_identificador(token):
     return token and all(c.isupper() for c in token) and token != "RES"
 
-
-def processar_linhas(linhas, tokens_linhas):
-    memoria = {}
-    resultados = []
-    processamentos = []
-    
-    for id_linha, (linha, tokens) in enumerate(zip(linhas, tokens_linhas)):
-        info = executarExpressao(tokens, memoria, resultados)
-        processamentos.append({
-            'numero': id_linha + 1,
-            'linha': linha,
-            'info': info
-        })
-        resultados.append(id_linha)
-    
-    return processamentos, memoria

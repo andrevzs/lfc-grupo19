@@ -8,6 +8,7 @@
 import sys
 from lexer import parseExpressao
 from executor import executarExpressao
+from assembler import GeradorAssembly
 
 
 def lerArquivoTeste(nome_arquivo):
@@ -29,25 +30,48 @@ def lerArquivoTeste(nome_arquivo):
     return linhas
 
 
+def salvarTokens(todos_tokens):
+    with open("tokens.txt", "w", encoding="utf-8") as arquivo:
+        for numero_linha, tokens in todos_tokens:
+            arquivo.write(f"Linha {numero_linha}: {tokens}\n")
+
+
+def salvarAssembly(codigo):
+    with open("output.asm", "w", encoding="utf-8") as arquivo:
+        arquivo.write(codigo)
+
+
 def processarLinhas(linhas):
     memoria = {}
     resultados = []
     todos_tokens = []
+    gerador = GeradorAssembly()
+
+    gerador.iniciar_programa()
+
     for numero_linha, conteudo in linhas:
         try:
             tokens = parseExpressao(conteudo)
             resultado = executarExpressao(tokens, memoria, resultados)
+
             print(f"Linha {numero_linha}: {tokens}")
-            print(f"  Resultado executor: {resultado}")
-            resultados.append(resultado)
+            print(f"  Executor: {resultado}")
+
             todos_tokens.append((numero_linha, tokens))
+            resultados.append(resultado)
+
+            gerador.adicionar_linha(numero_linha, resultado)
+
         except ValueError as erro:
             print(f"Linha {numero_linha}: {erro}")
-    
-    with open('tokens.txt', 'w', encoding='utf-8') as arquivo:
-        for numero_linha, tokens in todos_tokens:
-            arquivo.write(f"Linha {numero_linha}: {tokens}\n")
-    
+        except Exception as erro:
+            print(f"Linha {numero_linha}: erro interno: {erro}")
+
+    gerador.finalizar_programa()
+
+    salvarTokens(todos_tokens)
+    salvarAssembly(gerador.obter_codigo())
+
     return todos_tokens
 
 

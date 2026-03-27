@@ -1,0 +1,179 @@
+class GeradorAssembly:
+    def __init__(self):
+        self.codigo = []
+        self.registrador_livre = 0
+        self.pilha = []
+        self.variaveis_memoria = {}
+        self.constantes_float = {}
+        self.labels_const = 0
+        self.labels = 0
+
+    def _novo_label_const(self):
+        self.labels_const += 1
+        return f"C_{self.labels_const}"
+
+    def _novo_label(self):
+        self.labels += 1
+        return f"L_{self.labels}"
+
+    def _proximo_registrador(self):
+        if self.registrador_livre > 7:
+            raise RuntimeError("Excedeu limite de registradores VFP (d0-d7)")
+        reg = self.registrador_livre
+        self.registrador_livre += 1
+        return f"d{reg}"
+
+    def _reiniciar_estado_expressao(self):
+        self.registrador_livre = 0
+        self.pilha = []
+
+    def _registrar_variavel(self, nome_var):
+        if nome_var not in self.variaveis_memoria:
+            self.variaveis_memoria[nome_var] = nome_var
+
+    def _emit(self, linha):
+        self.codigo.append(linha)
+
+    def _carrega_constante_float(self, valor_str, reg_destino):
+        if valor_str not in self.constantes_float:
+            label = self._novo_label_const()
+            self.constantes_float[valor_str] = label
+        else:
+            label = self.constantes_float[valor_str]
+
+        self._emit(f"    LDR r0, ={label}")
+        self._emit(f"    VLDR {reg_destino}, [r0]")
+
+    def iniciar_programa(self):
+        self.codigo = []
+        self._emit(".text")
+        self._emit(".global _start")
+        self._emit("_start:")
+        self._emit("")
+
+    def finalizar_programa(self):
+        self._emit("fim:")
+        self._emit("    B fim")
+
+        if self.constantes_float:
+            self._emit("")
+            self._emit(".align 3")
+            for valor_str, label in self.constantes_float.items():
+                self._emit(f"{label}: .double {valor_str}")
+
+        if self.variaveis_memoria:
+            self._emit("")
+            self._emit(".data")
+            self._emit(".align 3")
+            for nome_var in self.variaveis_memoria:
+                self._emit(f"{nome_var}: .double 0.0")
+
+    def _gerar_numero(self, numero_str):
+        reg = self._proximo_registrador()
+
+        try:
+            float(numero_str)
+        except ValueError:
+            raise ValueError(f"Número inválido: {numero_str}")
+
+        self._carrega_constante_float(numero_str, reg)
+        self.pilha.append(reg)
+        return reg
+
+    def _gerar_variavel(self, nome_var):
+        reg = self._proximo_registrador()
+        self._registrar_variavel(nome_var)
+
+        self._emit(f"    LDR r0, ={nome_var}")
+        self._emit(f"    VLDR {reg}, [r0]")
+        self.pilha.append(reg)
+        return reg
+
+    def _gerar_operacao(self, operador):
+        if len(self.pilha) < 2:
+            raise RuntimeError(f"Pilha insuficiente para operação {operador}")
+
+        reg_b = self.pilha.pop()
+        reg_a = self.pilha.pop()
+
+        if operador == "+":
+            self._emit(f"    VADD.F64 {reg_a}, {reg_a}, {reg_b}")
+        elif operador == "-":
+            self._emit(f"    VSUB.F64 {reg_a}, {reg_a}, {reg_b}")
+        elif operador == "*":
+            self._emit(f"    VMUL.F64 {reg_a}, {reg_a}, {reg_b}")
+        elif operador == "/":
+            self._emit(f"    VDIV.F64 {reg_a}, {reg_a}, {reg_b}")
+        elif operador == "//":
+            self._emit("    @ TODO: divisao inteira")
+        elif operador == "%":
+            self._emit("    @ TODO: resto da divisao inteira")
+        elif operador == "^":
+            self._emit("    @ TODO: potenciacao")
+        else:
+            raise ValueError(f"Operador desconhecido: {operador}")
+
+        self.pilha.append(reg_a)
+        return reg_a
+
+    def _gerar_sub_expressao(self, sub_info):
+        if sub_info["tipo"] != "expressao":
+            return
+
+        for operando in sub_info["operandos"]:
+            if isinstance(operando, dict):
+                self._gerar_sub_expressao(operando)
+            else:
+                try:
+                    self._gerar_numero(operando)
+                except ValueError:
+                    self._gerar_variavel(operando)
+
+        for operador in sub_info["operadores"]:
+            self._gerar_operacao(operador)
+
+    def adicionar_linha(self, numero_linha, resultado_executor):
+        self._reiniciar_estado_expressao()
+        self._emit(f"    @ Linha {numero_linha}")
+
+        if resultado_executor["tipo"] == "expressao":
+            self._gerar_sub_expressao(resultado_executor)
+
+        elif resultado_executor["tipo"] == "memoria_atrib":
+            nome_var = resultado_executor["memoria_var"]
+            self._registrar_variavel(nome_var)
+
+            for operando in resultado_executor["operandos"]:
+                try:
+                    self._gerar_numero(operando)
+                except ValueError:
+                    self._gerar_variavel(operando)
+
+            if self.pilha:
+                valor_reg = self.pilha[-1]
+                self._emit(f"    LDR r0, ={nome_var}")
+                self._emit(f"    VSTR {valor_reg}, [r0]")
+
+        elif resultado_executor["tipo"] == "memoria_acesso":
+            nome_var = resultado_executor["memoria_var"]
+            self._registrar_variavel(nome_var)
+            self._emit(f"    LDR r0, ={nome_var}")
+            self._emit("    VLDR d0, [r0]")
+
+        elif resultado_executor["tipo"] == "res_acesso":
+            indice = resultado_executor["indice_res"]
+            self._emit(f"    @ TODO: acessar resultado de {indice} linhas anteriores")
+            self._carrega_constante_float("0.0", "d0")
+
+        self._emit("")
+
+    def obter_codigo(self):
+        return "\n".join(self.codigo)
+
+
+def gerarAssembly(resultado_executor):
+    gerador = GeradorAssembly()
+    gerador.iniciar_programa()
+    gerador.adicionar_linha(1, resultado_executor)
+    gerador.finalizar_programa()
+    return gerador.obter_codigo()
