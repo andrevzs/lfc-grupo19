@@ -120,18 +120,57 @@ class GeradorAssembly:
 
         if operador == "+":
             self._emit(f"    VADD.F64 {reg_a}, {reg_a}, {reg_b}")
+
         elif operador == "-":
             self._emit(f"    VSUB.F64 {reg_a}, {reg_a}, {reg_b}")
+
         elif operador == "*":
             self._emit(f"    VMUL.F64 {reg_a}, {reg_a}, {reg_b}")
+
         elif operador == "/":
             self._emit(f"    VDIV.F64 {reg_a}, {reg_a}, {reg_b}")
+
         elif operador == "//":
-            self._emit("    @ TODO: divisao inteira")
+            self._emit(f"    VCVT.S32.F64 s0, {reg_a}")
+            self._emit(f"    VCVT.S32.F64 s1, {reg_b}")
+            self._emit("    VMOV r1, s0")
+            self._emit("    VMOV r2, s1")
+            self._emit("    SDIV r3, r1, r2")
+            self._emit("    VMOV s2, r3")
+            self._emit(f"    VCVT.F64.S32 {reg_a}, s2")
+
         elif operador == "%":
-            self._emit("    @ TODO: resto da divisao inteira")
+            self._emit(f"    VCVT.S32.F64 s0, {reg_a}")
+            self._emit(f"    VCVT.S32.F64 s1, {reg_b}")
+            self._emit("    VMOV r1, s0")
+            self._emit("    VMOV r2, s1")
+            self._emit("    SDIV r3, r1, r2")
+            self._emit("    MUL r4, r3, r2")
+            self._emit("    SUB r5, r1, r4")
+            self._emit("    VMOV s2, r5")
+            self._emit(f"    VCVT.F64.S32 {reg_a}, s2")
+
         elif operador == "^":
-            self._emit("    @ TODO: potenciacao")
+            loop = self._novo_label()
+            fim = self._novo_label()
+
+            self._emit(f"    VCVT.S32.F64 s0, {reg_a}")
+            self._emit("    VMOV r1, s0")
+            self._emit(f"    VCVT.S32.F64 s1, {reg_b}")
+            self._emit("    VMOV r2, s1")
+            self._emit("    MOV r3, #1")
+
+            self._emit(f"{loop}:")
+            self._emit("    CMP r2, #0")
+            self._emit(f"    BEQ {fim}")
+            self._emit("    MUL r3, r3, r1")
+            self._emit("    SUB r2, r2, #1")
+            self._emit(f"    B {loop}")
+
+            self._emit(f"{fim}:")
+            self._emit("    VMOV s2, r3")
+            self._emit(f"    VCVT.F64.S32 {reg_a}, s2")
+
         else:
             raise ValueError(f"Operador desconhecido: {operador}")
 
