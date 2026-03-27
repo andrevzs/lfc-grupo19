@@ -7,6 +7,7 @@ class GeradorAssembly:
         self.constantes_float = {}
         self.labels_const = 0
         self.labels = 0
+        self.resultados_linhas = set()
 
     def _novo_label_const(self):
         self.labels_const += 1
@@ -15,6 +16,9 @@ class GeradorAssembly:
     def _novo_label(self):
         self.labels += 1
         return f"L_{self.labels}"
+
+    def _label_resultado_linha(self, numero_linha):
+        return f"RES_LINHA_{numero_linha}"
 
     def _proximo_registrador(self):
         if self.registrador_livre > 7:
@@ -31,10 +35,19 @@ class GeradorAssembly:
         if nome_var not in self.variaveis_memoria:
             self.variaveis_memoria[nome_var] = nome_var
 
+    def _registrar_resultado_linha(self, numero_linha):
+        self.resultados_linhas.add(numero_linha)
+
     def _emit(self, linha):
         self.codigo.append(linha)
 
     def _carrega_constante_float(self, valor_str, reg_destino):
+        try:
+            valor_float = float(valor_str)
+            valor_str = str(valor_float)
+        except ValueError:
+            pass
+
         if valor_str not in self.constantes_float:
             label = self._novo_label_const()
             self.constantes_float[valor_str] = label
@@ -43,6 +56,12 @@ class GeradorAssembly:
 
         self._emit(f"    LDR r0, ={label}")
         self._emit(f"    VLDR {reg_destino}, [r0]")
+
+    def _salvar_resultado_linha(self, numero_linha):
+        label = self._label_resultado_linha(numero_linha)
+        self._registrar_resultado_linha(numero_linha)
+        self._emit(f"    LDR r0, ={label}")
+        self._emit("    VSTR d0, [r0]")
 
     def iniciar_programa(self):
         self.codigo = []
@@ -61,12 +80,15 @@ class GeradorAssembly:
             for valor_str, label in self.constantes_float.items():
                 self._emit(f"{label}: .double {valor_str}")
 
-        if self.variaveis_memoria:
-            self._emit("")
-            self._emit(".data")
-            self._emit(".align 3")
-            for nome_var in self.variaveis_memoria:
-                self._emit(f"{nome_var}: .double 0.0")
+        self._emit("")
+        self._emit(".data")
+        self._emit(".align 3")
+
+        for numero_linha in sorted(self.resultados_linhas):
+            self._emit(f"{self._label_resultado_linha(numero_linha)}: .double 0.0")
+
+        for nome_var in self.variaveis_memoria:
+            self._emit(f"{nome_var}: .double 0.0")
 
     def _gerar_numero(self, numero_str):
         reg = self._proximo_registrador()
@@ -162,8 +184,30 @@ class GeradorAssembly:
 
         elif resultado_executor["tipo"] == "res_acesso":
             indice = resultado_executor["indice_res"]
-            self._emit(f"    @ TODO: acessar resultado de {indice} linhas anteriores")
-            self._carrega_constante_float("0.0", "d0")
+            linha_alvo = numero_linha - indice
+
+            if 1 <= linha_alvo < numero_linha:
+                label = self._label_resultado_linha(linha_alvo)
+                self._registrar_resultado_linha(linha_alvo)
+                self._emit(f"    LDR r0, ={label}")
+                self._emit("    VLDR d0, [r0]")
+            else:
+                self._emit("    @ RES invalido, carregando 0.0")
+                self._carrega_constante_float("0.0", "d0")
+
+        if resultado_executor["tipo"] == "expressao" and self.pilha:
+            resultado_final = self.pilha[-1]
+            if resultado_final != "d0":
+                self._emit("    @ Resultado final em registrador diferente de d0")
+                self._emit(f"    LDR r0, ={self._label_resultado_linha(numero_linha)}")
+                self._emit(f"    VSTR {resultado_final}, [r0]")
+                self._emit(f"    VLDR d0, [r0]")
+                self._registrar_resultado_linha(numero_linha)
+            else:
+                self._salvar_resultado_linha(numero_linha)
+
+        elif resultado_executor["tipo"] in ("memoria_atrib", "memoria_acesso", "res_acesso"):
+            self._salvar_resultado_linha(numero_linha)
 
         self._emit("")
 
