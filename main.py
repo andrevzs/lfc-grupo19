@@ -50,22 +50,16 @@ def processarLinhas(linhas):
     gerador.iniciar_programa()
 
     for numero_linha, conteudo in linhas:
-        try:
-            tokens = parseExpressao(conteudo)
-            resultado = executarExpressao(tokens, memoria, resultados)
+        tokens = parseExpressao(conteudo)
+        resultado = executarExpressao(tokens, memoria, resultados)
 
-            print(f"Linha {numero_linha}: {tokens}")
-            print(f"  Executor: {resultado}")
+        print(f"Linha {numero_linha}: {tokens}")
+        print(f"  Executor: {resultado}")
 
-            todos_tokens.append((numero_linha, tokens))
-            resultados.append(resultado)
+        todos_tokens.append((numero_linha, tokens))
+        resultados.append(resultado)
 
-            gerador.adicionar_linha(numero_linha, resultado)
-
-        except ValueError as erro:
-            print(f"Linha {numero_linha}: {erro}")
-        except Exception as erro:
-            print(f"Linha {numero_linha}: erro interno: {erro}")
+        gerador.adicionar_linha(numero_linha, resultado)
 
     gerador.finalizar_programa()
 
