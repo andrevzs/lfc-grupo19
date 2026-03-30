@@ -128,8 +128,3 @@ output.asm
 ✔ Geração de Assembly completa
 ✔ Compatível com CPUlator
 
----
-
-## Observação final
-
-O projeto não implementa um compilador completo, mas sim um gerador de código Assembly a partir de expressões RPN, conforme especificado na atividade.
